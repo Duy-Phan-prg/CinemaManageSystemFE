@@ -1,17 +1,54 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import authApi from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
 
 const BG_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuA_5esAHYqOsNem2B03lLqoS1MJhb14m30jsihUTyfKoHRwuSbYg_Aa9GT2_Zpgt3oO5t4CWozIselGihysqXIZHtcCySZSLKxW25XH8C4xc8sFK8QrLM2Uvqf43ZUW3RBfMStiAmq-tUJEflkeajvqTCBVecIQpbsSPMIuEOpi52736kkATSswTxApzDMI0l_qT_Foa_IZ3pMHvyojCKvqRFrMWlWD9L8-IW2uDQ-yy0ffPBNSqacwL_1ZDzFJnQgAl7NeAQk3O1a1'
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuA_5esAHYqOsNem2B03lLqoS1MJhb14m30jsihUTyfKoHRwuSbYg_Aa9GT2_Zpgt3oO5t4CWozIselGihysqXIZHtcCySZSLKxW25XH8C4xc8sFK8QrLM2Uvqf43ZUW3RBfMStiAmq-tUJEflkeajvqTCBVecIQpbsSPMIuEOpi52736kkATSswTxApzDMI0l_qT_Foa_IZ3pMHvyojCKvqRFrMWlWD9L8-IW2uDQ-yy0ffPBNSqacwL_1ZDzFJnQgAl7NeAQk3O1a1";
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    navigate('/')
-  }
+  const navigate = useNavigate();
+  const { loginContext } = useAuth(); // Gọi hàm từ Context
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      // 1. Gọi API qua trạm trung chuyển
+      const response = await authApi.login({ email, password });
+      const data = response.data;
+
+      // 2. Lưu token và thông tin user vào Context
+      loginContext(
+        {
+          email: data.email,
+          fullName: data.fullName,
+          role: data.role,
+          status: data.status,
+        },
+        data.token,
+      );
+
+      // 3. Đăng nhập thành công, đá về trang chủ
+      navigate("/");
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Sai email hoặc mật khẩu. Vui lòng thử lại!",
+      );
+      console.error("Lỗi đăng nhập: ", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="bg-background text-on-background min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -32,7 +69,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1
             className="font-display-lg text-display-lg-mobile md:text-display-lg text-primary-container tracking-tighter cursor-pointer"
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
           >
             CINEPREMIER
           </h1>
@@ -47,6 +84,13 @@ export default function LoginPage() {
             Đăng nhập
           </h2>
 
+          {/* Vùng hiển thị lỗi */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-200 text-sm text-center">
+              {error}
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Email */}
             <div>
@@ -58,7 +102,9 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="material-symbols-outlined text-on-surface-variant">mail</span>
+                  <span className="material-symbols-outlined text-on-surface-variant">
+                    mail
+                  </span>
                 </span>
                 <input
                   className="input-glass w-full pl-10 pr-4 py-3 rounded-lg text-on-surface placeholder-on-surface-variant/50 font-body-md text-body-md"
@@ -67,6 +113,8 @@ export default function LoginPage() {
                   placeholder="nhap@email.com"
                   required
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -80,13 +128,18 @@ export default function LoginPage() {
                 >
                   Mật khẩu
                 </label>
-                <a className="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors" href="#">
+                <a
+                  className="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors"
+                  href="#"
+                >
                   Quên mật khẩu?
                 </a>
               </div>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <span className="material-symbols-outlined text-on-surface-variant">lock</span>
+                  <span className="material-symbols-outlined text-on-surface-variant">
+                    lock
+                  </span>
                 </span>
                 <input
                   className="input-glass w-full pl-10 pr-10 py-3 rounded-lg text-on-surface placeholder-on-surface-variant/50 font-body-md text-body-md"
@@ -94,7 +147,9 @@ export default function LoginPage() {
                   name="password"
                   placeholder="••••••••"
                   required
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface transition-colors"
@@ -102,7 +157,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword((v) => !v)}
                 >
                   <span className="material-symbols-outlined">
-                    {showPassword ? 'visibility' : 'visibility_off'}
+                    {showPassword ? "visibility" : "visibility_off"}
                   </span>
                 </button>
               </div>
@@ -116,7 +171,10 @@ export default function LoginPage() {
                 name="remember-me"
                 type="checkbox"
               />
-              <label className="ml-2 block font-body-md text-body-md text-on-surface-variant" htmlFor="remember-me">
+              <label
+                className="ml-2 block font-body-md text-body-md text-on-surface-variant"
+                htmlFor="remember-me"
+              >
                 Ghi nhớ đăng nhập
               </label>
             </div>
@@ -124,29 +182,36 @@ export default function LoginPage() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full py-4 rounded-lg bg-gradient-to-r from-primary-container to-secondary-container text-white font-headline-lg text-headline-lg transition-all duration-300 flex justify-center items-center gap-2 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+              disabled={isLoading}
+              className={`w-full py-4 rounded-lg text-white font-headline-lg text-headline-lg transition-all duration-300 flex justify-center items-center gap-2 hover:shadow-lg ${
+                isLoading
+                  ? "bg-surface-variant cursor-not-allowed opacity-70"
+                  : "bg-gradient-to-r from-primary-container to-secondary-container hover:scale-[1.02] active:scale-[0.98]"
+              }`}
             >
-              <span>Đăng nhập</span>
-              <span className="material-symbols-outlined">arrow_forward</span>
+              <span>{isLoading ? "Đang xử lý..." : "Đăng nhập"}</span>
+              {!isLoading && (
+                <span className="material-symbols-outlined">arrow_forward</span>
+              )}
             </button>
           </form>
 
-          {/* Divider */}
+          {/* Divider & Social ... (Giữ nguyên) */}
           <div className="mt-8 flex items-center justify-center gap-4">
             <div className="border-t border-outline-variant flex-1" />
-            <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Hoặc</span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
+              Hoặc
+            </span>
             <div className="border-t border-outline-variant flex-1" />
           </div>
 
-          {/* Social */}
           <div className="mt-6 grid grid-cols-2 gap-4">
             <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg text-on-surface hover:bg-surface-container-highest transition-colors font-body-md text-body-md bg-surface-container-low/50">
-              <span className="material-symbols-outlined mr-2">group</span>
+              <span className="material-symbols-outlined mr-2">group</span>{" "}
               Google
             </button>
             <button className="flex justify-center items-center py-2 px-4 border border-outline-variant rounded-lg text-on-surface hover:bg-surface-container-highest transition-colors font-body-md text-body-md bg-surface-container-low/50">
-              <span className="material-symbols-outlined mr-2">ios</span>
-              Apple
+              <span className="material-symbols-outlined mr-2">ios</span> Apple
             </button>
           </div>
 
@@ -155,7 +220,7 @@ export default function LoginPage() {
             Chưa có tài khoản?
             <button
               className="font-headline-lg text-[16px] leading-[24px] text-secondary hover:text-secondary-fixed-dim transition-colors ml-1 underline decoration-secondary/30 underline-offset-4"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate("/register")}
             >
               Đăng ký
             </button>
@@ -170,5 +235,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
